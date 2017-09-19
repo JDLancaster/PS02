@@ -1,6 +1,6 @@
 ---
 title: "STAT/MATH 495: Problem Set 02"
-author: "WRITE YOUR NAMES HERE"
+author: "Jeff Lancaster"
 date: "2017-09-19"
 output:
   html_document:
@@ -16,30 +16,60 @@ knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4.5)
 
 # Load packages
 library(tidyverse)
-
+library(broom)
 # Note the relative file path, and not absolute file path:
 # http://www.coffeecup.com/help/articles/absolute-vs-relative-pathslinks/
 train <- read_csv("data/train.csv")
+macro <- read_csv("data/macro.csv")
+test <- read_csv("data/test.csv")
+samplesubmission <- read_csv("data/sample_submission.csv")
+#summary(train$id)
 ```
 
 
 # Exploratory Data Analysis
 
 ```{r}
+#str(test)
+ggplot(test,aes(x=max_floor))+geom_bar()+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(test,aes(x=product_type))+geom_bar()+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(test,aes(x=sub_area))+geom_bar()+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(test,aes(x=full_sq))+geom_bar()+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+summary(train$price_doc)
 ```
 
 
 # Model Fit
 
 ```{r}
-
+df_values <- c(5, 7, 9, 11)
+overall <- NULL
+for(df in df_values){
+  overall <- smooth.spline(train$full_sq, train$price_doc, df=df) %>%
+    broom::augment() %>%
+    mutate(df=df) %>%
+    bind_rows(overall)
+}
+overall <- overall %>% 
+  as_tibble()
+df_plots <- overall %>% 
+  ggplot(aes(x=x)) +
+  geom_point(aes(y=y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1) +
+  facet_wrap(~df, nrow=2)
+df_plots
 ```
+Something like df=11 seems to work the best, although the outliers clearly mess it up a bit.
 
 
 # Create Submission File
 
 ```{r}
-
+mod <- smooth.spline(train$full_sq, train$price_doc, df=11)
+test2 <- predict(mod, test$full_sq)
+submission <- data.frame(test$id, test2$y)
+names(submission) <- c("id", "price_doc")
+write.csv(submission, "submission.csv", row.names=FALSE)
 ```
-
+0.40943 is my score!
